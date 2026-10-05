@@ -1,0 +1,37 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.example.examplemod.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "examplemod.refmap.json",
+  "mixins": [
+    "LivingEntityMixin",
+    "LivingEntityAccessor",
+    "PlayerMixin",
+    "MobMixin",
+    "EntityMixin",
+    "PressurePlateBlockMixin",
+    "WeightedPressurePlateBlockMixin",
+    "TripWireBlockMixin",
+    "AbstractHorseMixin",
+    "PigMixin",
+    "EnderDragonMixin",
+    "EnderDragonPartMixin",
+    "DevourPlayerMixin",
+    "DevourRidingMixin",
+    "AxolotlVortexMixin",
+    "SelectiveBlockCollisionMixin",
+    "SelectiveSuffocationMixin"
+  ],
+  "client": [
+    "client.EnderDragonRendererMixin",
+    "client.AbstractClientPlayerMixin",
+    "client.CameraMixin",
+    "client.GameRendererMixin",
+    "client.DevourRendererMixin",
+    "client.AxolotlVortexModelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

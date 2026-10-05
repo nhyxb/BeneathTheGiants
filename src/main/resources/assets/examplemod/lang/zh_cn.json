@@ -1,0 +1,18 @@
+{
+  "itemGroup.examplemod": "像素生存",
+  "item.examplemod.scale_wand": "缩放法杖",
+  "item.examplemod.scale_wand.desc": "右键非玩家生物在微型与正常体型间切换。",
+  "message.examplemod.scale_wand.reject_player": "玩家无法被缩放。",
+  "message.examplemod.scale_wand.restore_blocked": "空间不足，无法恢复该生物！",
+  "death.attack.examplemod.stomp": "%1$s 被 %2$s 踩扁了",
+  "death.attack.examplemod.devoured": "%1$s 被 %2$s 吃掉了",
+  "key.categories.examplemod": "像素生存",
+  "key.examplemod.mount_livestock": "骑乘/下牲畜",
+  "key.examplemod.toggle_climbing": "切换攀墙",
+  "message.examplemod.climbing_enabled": "攀墙：开启",
+  "message.examplemod.climbing_disabled": "攀墙：关闭",
+  "attribute.name.examplemod.pixel_scale": "像素尺寸",
+  "death.attack.examplemod.axolotl_bite": "%1$s 被 %2$s 吃掉了",
+  "death.attack.examplemod.axolotl_bite.player": "%1$s 被 %2$s 吃掉了",
+  "death.attack.examplemod.axolotl_bite.item": "%1$s 被 %2$s 吃掉了（%3$s）"
+}

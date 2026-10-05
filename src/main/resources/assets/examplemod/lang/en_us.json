@@ -1,0 +1,18 @@
+{
+  "itemGroup.examplemod": "Example Mod",
+  "item.examplemod.scale_wand": "Scale Wand",
+  "item.examplemod.scale_wand.desc": "Right click non-player living entities to toggle between tiny and normal scale.",
+  "message.examplemod.scale_wand.reject_player": "Players cannot be resized.",
+  "message.examplemod.scale_wand.restore_blocked": "Not enough space to restore this entity!",
+  "death.attack.examplemod.stomp": "%1$s was stomped by %2$s",
+  "death.attack.examplemod.devoured": "%1$s was eaten alive by %2$s",
+  "key.categories.examplemod": "Pixel Survival",
+  "key.examplemod.mount_livestock": "Mount or dismount livestock",
+  "key.examplemod.toggle_climbing": "Toggle wall climbing",
+  "message.examplemod.climbing_enabled": "Wall climbing: enabled",
+  "message.examplemod.climbing_disabled": "Wall climbing: disabled",
+  "attribute.name.examplemod.pixel_scale": "Pixel Scale",
+  "death.attack.examplemod.axolotl_bite": "%1$s was eaten by %2$s",
+  "death.attack.examplemod.axolotl_bite.player": "%1$s was eaten by %2$s",
+  "death.attack.examplemod.axolotl_bite.item": "%1$s was eaten by %2$s using %3$s"
+}
