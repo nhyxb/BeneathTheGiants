@@ -1,5 +1,5 @@
 {
-  "itemGroup.examplemod": "像素生存",
+  "itemGroup.examplemod": "BeneathTheGiants",
   "item.examplemod.scale_wand": "缩放法杖",
   "item.examplemod.scale_wand.desc": "右键非玩家生物在微型与正常体型间切换。",
   "message.examplemod.scale_wand.reject_player": "玩家无法被缩放。",

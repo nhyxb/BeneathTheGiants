@@ -1,6 +1,6 @@
-# Minecraft NeoForge 1.21.1 Mod 开发环境
+# BeneathTheGiants — Minecraft 1.21.1 微型生存模组
 
-这是基于 NeoForge 官方 **1.21.1 ModDevGradle MDK** 初始化的 Java 模组工程，包含可直接导入 IDE 的示例 mod、客户端/服务端运行配置和 Gradle Wrapper。
+这是一个基于 NeoForge **1.21.1** 的微型生存模组，使用 ModDevGradle、Java 21 和项目内 Gradle Wrapper 构建。
 
 ## 工具链
 

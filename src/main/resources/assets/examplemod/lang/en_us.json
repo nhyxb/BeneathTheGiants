@@ -1,5 +1,5 @@
 {
-  "itemGroup.examplemod": "Example Mod",
+  "itemGroup.examplemod": "BeneathTheGiants",
   "item.examplemod.scale_wand": "Scale Wand",
   "item.examplemod.scale_wand.desc": "Right click non-player living entities to toggle between tiny and normal scale.",
   "message.examplemod.scale_wand.reject_player": "Players cannot be resized.",

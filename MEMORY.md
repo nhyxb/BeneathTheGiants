@@ -78,5 +78,8 @@
 - 开源仓库 github.com/nhyxb/BeneathTheGiants：本地 git 已 init（main 分支，107 文件，LICENSE 用 MIT "The BeneathTheGiants Authors"，.zcode/ 排除，run/build 已被 .gitignore 覆盖），remote origin=git@github.com:nhyxb/BeneathTheGiants.git，commit 完成。
 - 空中阻尼重做（用户反馈 sprint 跳落地“速度降太快、数值越小越明显”）：纯指数阻尼会把落地速度拖到起跳的两成。改为“仅衰减超出走速的部分”，sprint 的 +30% 属性加成先归一化（÷1.3）防止基准跟着抬高，落地速度≥走速，前后连贯。随后的“起步太快”反馈新增地面起步限速：低于走速时每 tick 增量 ≤ walkPerTick × groundAccelRatio（默认 0.1，约 10 tick 起步），超过走速的速度（击退/外力）不受限；用 `@Unique examplemod$prevHSpeed` 记前帧水平速度，限速与阻尼共用 travel TAIL 注入。指令新增 `/tiny groundaccel`。
 - 2026-10-05 GitHub 上传准备：仓库已初始化，`main` 只有一个本地初始提交，origin 是公开仓库 `github.com/nhyxb/BeneathTheGiants`，远端网页当前为空。最终整理提交后，SSH `ls-remote` 与普通 `git push` 都因连接 `198.18.0.16:22` 在 SSH banner 阶段超时而失败；没用 HTTPS 或强推，提交保留在本地。当前 HEAD 的 `./gradlew --console=plain build` 成功；116 项全量 GameTest 通过记录早于最新 groundAccel/空中阻尼调校，调校后未重跑 GameTest。README 已说明此验证时间顺序；GitHub Actions workflow 当前仅跑 build。
+- 2026-10-05 用户指定游戏显示名为 BeneathTheGiants；已设置 Gradle `mod_name`、双语创造栏名称及 mod metadata，`mod_license` 与 MIT LICENSE 对齐。保留 `mod_id=examplemod`，避免改变物品／存档标识。改名后 `./gradlew --console=plain build` 成功。
+- 2026-10-05 改名提交 `982810c` 后按用户要求再次用 SSH 推送 `main`，仍因 `198.18.0.16:22` banner 阶段超时；没有远端提交，两个本地提交待网络恢复后普通 fast-forward 推送。
+- 2026-10-05 F13/F10/F16/F23 已实现和自动验收完成；F02/F03/F04/F08 为用户取消项，当前仍待办 F14。F23 仅火把最高顶面点燃、攀墙／攀杆速度为 0.0294 格/tick，已按用户复测调整。
 
 - 2026-10-05 Blockbench MCP 已接入 Codex 全局配置（服务器名 `blockbench`，Streamable HTTP，`http://localhost:3000/bb-mcp`）。Flatpak Blockbench 5.2.1 已安装 MCP 插件 1.10.0，实际 initialize／tools/list／get_capabilities 调用成功；桌面插件要求 Blockbench 保持运行，未打开模型时工具列表较少，随模式动态变化。Codex 配置位置为用户级 `.codex/config.toml`；当前会话未动态加载新工具时须重启 Codex 后使用。
