@@ -35,11 +35,14 @@ public final class TinyCommands {
                                     TinyMotionTuning.rainOxygenPerTick = IntegerArgumentType.getInteger(ctx, "perTick");
                                     return feedback(ctx.getSource(), "rainOxygenPerTick", TinyMotionTuning.rainOxygenPerTick);
                                 })))
+                .then(Commands.literal("groundaccel")
+                        .then(Commands.argument("ratio", DoubleArgumentType.doubleArg(0.01, 1.0))
+                                .executes(ctx -> setDouble(ctx.getSource(), "groundAccelRatio", TinyMotionTuning.groundAccelRatio = DoubleArgumentType.getDouble(ctx, "ratio")))))
                 .then(Commands.literal("show").executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(String.format(
-                            "tiny speedScale=%.2f jumpScale=%.2f gravityScale=%.2f airDrag=%.2f rainOxygenPerTick=%d",
+                            "tiny speedScale=%.2f jumpScale=%.2f gravityScale=%.2f airDrag=%.2f groundAccelRatio=%.2f rainOxygenPerTick=%d",
                             TinyMotionTuning.speedScale, TinyMotionTuning.jumpScale, TinyMotionTuning.gravityScale,
-                            TinyMotionTuning.airDrag, TinyMotionTuning.rainOxygenPerTick)), false);
+                            TinyMotionTuning.airDrag, TinyMotionTuning.groundAccelRatio, TinyMotionTuning.rainOxygenPerTick)), false);
                     return 1;
                 }))
                 .then(Commands.literal("reset").executes(ctx -> {
@@ -47,6 +50,7 @@ public final class TinyCommands {
                     TinyMotionTuning.jumpScale = 0.25D;
                     TinyMotionTuning.gravityScale = 0.25D;
                     TinyMotionTuning.airDrag = 0.85F;
+                    TinyMotionTuning.groundAccelRatio = 0.1D;
                     TinyMotionTuning.rainOxygenPerTick = 1;
                     return feedback(ctx.getSource(), "reset to defaults", 0);
                 })));

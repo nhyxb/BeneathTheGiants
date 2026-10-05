@@ -40,7 +40,7 @@ DRI_PRIME=pci-0000_03_00_0 ./gradlew --console=plain runClient
 
 ## 游戏功能与使用
 
-以下功能已实现。最终构建和 33 项 GameTest 已通过（包括加入世界时的尺寸/AABB 缓存回归），客户端在指定独显上启动并进入本地世界；FOV、步行动画的真人视觉手感、道具真人输入、网络重登及多人客户端/服务端视觉一致性仍未人工验收。
+当前 1.21.1 / NeoForge 21.1.252 版本已经实现基础微型生存机制和路线图里的 F01、F05–F21、F23（F02、F03、F04、F08 已取消；F14 未实现）。最近一次完整 GameTest 运行在最后的移动调校前，116 项 required 测试全部通过；其后的地面起步／空中阻尼调校本次已通过 `./gradlew --console=plain build`，尚未重跑 GameTest。GitHub Actions 当前也只运行 build；JUnit 的 `test` 为 `NO-SOURCE`。GameTest 覆盖自动规则，不等同于真实多人或视觉体验验收。详细范围、参数和人工复验步骤见 [Feature-Roadmap.md](Feature-Roadmap.md) 与 [Tech-Spec.md](Tech-Spec.md)。
 
 - 玩家进入世界后会永久保持 1/28.8 尺寸倍率，站立高度约为 1/16 格；重登、死亡重生和切换维度后仍保持。玩家微型尺寸和眼高继续生效。
 - `examplemod:scale_wand` 可在创意栏获取，也可在允许作弊或具有相应权限时运行 `/give @s examplemod:scale_wand`。
@@ -50,9 +50,14 @@ DRI_PRIME=pci-0000_03_00_0 ./gradlew --console=plain runClient
 - 微型实体朝墙移动时可贴墙攀爬，潜行时会停在墙上。普通大小的生物不会因此获得攀墙能力。
 - wand 缩小的非玩家生物为该生物普通尺寸的 0.5 倍，保留不同种类间的原始大小差异；其碰撞箱、眼高和相应台阶高度按该尺寸调整。高度至少为受踩目标 4 倍才符合踩踏尺寸条件，因此普通体型与同种半尺寸生物之间的 2:1 高度比不足以踩踏。
 - 玩家和带本 mod 微型状态的生物移动速度为普通值的 0.25；LivingEntity 步行动画只对本 mod 标记的微型实体独立处理，按局部模型尺寸归一化位移后沿用 vanilla 平滑、动画上限 1，静止时为 0，不靠提升实际移动速度加快动画，也不修改第一人称 camera bob。
+- OP 等级 2 可用 `/tiny speed|jump|gravity|airdrag|groundaccel|rainoxygen|show|reset` 调整或检查本次运行的移动参数；更改不会写入存档或配置，重启后恢复默认值。
 - 第一人称和 F5 前/后的第三人称视野不因本 mod 自有移动速度 modifier 而收窄。校正只抵消本 mod 自己导致的 FOV 差异；原版疾跑、飞行、弓等物品、真实药水效果和用户 FOV 设置仍可改变视野。微型第三人称相机距离继续生效。
 - 旧存档迁移只调整本 mod 自有旧 modifier：玩家 speed 从 `-0.65` 更新为 `-0.75`；旧版 wand 微型生物更新为普通尺寸的 0.5 倍、movement ×0.25 和半尺寸对应的 step，并幂等补齐缺失的 jump/max-health modifier。迁移保留当前绝对生命值，不再按最大生命值变化换算比例，也不删除其它模组 modifier；修复缺失 max-health modifier 后若生命值高于新上限，只裁剪至合法值。
 - 友好生物受到伤害后会反击攻击者；不会主动进攻，也不会反击主人或同队成员，创造/旁观模式玩家不会成为攻击目标。体型至少大四倍的生物在行走或落下时，若脚底水平覆盖并真实踩中玩家或被本 mod 道具缩小的生物，会造成伤害；正常大小的自然幼年动物不属于踩踏目标。
+- 食虫生物标签内的蜘蛛系及鸡、猫、豹猫、狐狸、蝙蝠、鹦鹉会主动捕食微型玩家，并有专用击杀归因。人形标签内的僵尸系、猪灵系、掠夺者系、村民和流浪商人会在近战将生存／冒险玩家打到 1 颗心及以下时吞噬；当前试玩概率为 100%，从拿起到终结时免疫其他伤害。
+- 微型玩家长按潜行并静止 3 秒后降低被发现范围；当前目标和反击记忆继续生效。仅微型玩家能穿过树叶、栅栏和栅栏门，普通生物碰撞保持原样。
+- 高于 1 格的生物起跳和落地会在附近震屏，极近距离产生一次击飞。水中的美西螈可在嘴前产生涡流吸附并持续撕咬微型玩家；玩家仍可游开。
+- 普通、灵魂和红石火把及其壁挂变体为微型玩家提供细杆碰撞，能站上或攀附；只有站在最高顶面才点燃，侧面攀爬不点燃，熄灭的红石火把只提供碰撞。
 
 玩家与联机服务器都需要安装相同版本的本 mod。Pehkui 只是尺寸与属性分离、同步及持久化设计的参考，不需要安装，也不是本 mod 的运行时依赖。
 
@@ -64,13 +69,13 @@ DRI_PRIME=pci-0000_03_00_0 ./gradlew --console=plain runClient
 | wand 生物尺寸 | 各自普通尺寸的 0.5 倍 |
 | 最大生命值 | ×0.5（玩家基准 20 点时为 10 点） |
 | 攻击输入伤害 | ×0.25（含武器/投射物，在目标护甲、抗性等通常减伤前） |
-| 水平移动 / 跳跃 | ×0.25 / ×0.5 |
+| 水平移动 / 跳跃 | ×0.25 / ×0.25 |
 | 挖掘速度 | ×0.2（玩家） |
 | 输出 / 受到击退 | ×0.25 / ×2 |
 | 方块 / 实体交互距离 | 最低 1.5 格（玩家） |
 | 台阶高度 | 按各实体尺寸比例缩放，最低 1/16 格 |
 | 步行动画 | 局部位移按模型尺寸归一化；vanilla 平滑、最高 1，静止为 0 |
-| 贴墙上升 | 0.08 格/tick；潜行时停墙 |
+| 攀墙／攀杆上升 | 0.0294 格/tick；贴墙潜行停住，松开后下落 |
 | 行走 / 下落踩踏 | 2 点 / `2 + min(下落距离, 8)` 点 |
 | 踩踏冷却 | 每个受踩目标独立 10 tick |
 
@@ -78,13 +83,7 @@ DRI_PRIME=pci-0000_03_00_0 ./gradlew --console=plain runClient
 
 ### 功能验证状态
 
-2026-10-05 最终验证：`./gradlew --console=plain build` 退出码 0，`BUILD SUCCESSFUL`（650 ms），且 `compileJava` 与 `jar` 实际执行；产物为 `build/libs/examplemod-1.0.0.jar`（81,577 bytes）。`./gradlew --console=plain runGameTestServer` 退出码 0，完成 33 项 GameTest（856 ms），输出 `All 33 required tests passed`。新迁移用例检查旧 NBT 首次加入和第二次加入；缺失 modifier 的实体在 `addFreshEntity` 返回后立即达到 scale 0.5 / AABB 高度 0.7，不依赖手动刷新或等待 tick。GameTestServer 结果不等于 JUnit 通过，Gradle `test` 仍为 `NO-SOURCE`。
-
-最终客户端 smoke 于 2026-10-05 使用 `DRI_PRIME=pci-0000_03_00_0 ./gradlew --console=plain runClient` 启动：日志确认 RX 6700 XT / OpenGL 4.6、Example Mod 1.0.0、1,291 条配方、Dev 登录并进入本地 integrated world；`LivingEntityMixin`、`client.AbstractClientPlayerMixin` 和 `client.EnderDragonRendererMixin` 均已应用，启动与进入世界期间没有阻断 ERROR/FATAL/MixinApply/InvalidInjection。客户端仍保持运行；该任务没有以 exit 0 结束，也不代表人工 FOV、F5 镜头、步频或联网测试已通过。产物 JAR 为 81,577 bytes，并包含 FOV Mixin 类及所需资源。
-
-历史记录：更早的 24 项 GameTest 与不带 `DRI_PRIME` 的客户端启动来自之前版本；旧客户端由操作者 Ctrl+C 结束（退出码 130），清理阶段的 OpenAL `Stop: Invalid name parameter` 不影响当时的启动 smoke。该历史启动没有使用上方独显环境变量。
-
-当前客户端 FOV（含疾跑、飞行、弓、真实药水及用户设置）、第一/第三人称镜头和步行动画仍需真人操作实测；FOV 不能由服务器 GameTest 代替。真人右键操作、视觉/碰撞直观一致性、真实网络重登及多人双端视觉同步也尚未人工验收；客户端启动 smoke 不代表这些体验通过。
+当前 HEAD 在最后的地面起步／空中阻尼调校后通过 `./gradlew --console=plain build`。116 项 required GameTest 的最后一次完整通过记录早于该调校；该调校后未重跑 GameTest。开发客户端上次已在 RX 6700 XT 上进入本地世界并加载新增 Mixin／资源。藏身按键手感、树叶内部视角、吞噬／美西螈下颌动作、火把顶面火焰表现及真实多客户端位置／伤害同步仍需人工复验。
 
 ## 开始编写
 

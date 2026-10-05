@@ -9,6 +9,7 @@ public final class TinyMotionTuning {
     public static double jumpScale = 0.25D;
     public static double gravityScale = 0.25D;
     public static float airDrag = 0.85F;
+    public static double groundAccelRatio = 0.1D;
     public static int rainOxygenPerTick = 1;
 
     private TinyMotionTuning() {

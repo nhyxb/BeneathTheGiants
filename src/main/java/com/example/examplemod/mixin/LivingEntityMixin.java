@@ -148,16 +148,48 @@ public abstract class LivingEntityMixin {
     @Unique
     private boolean examplemod$wasClimbing = false;
 
+    @Unique
+    private double examplemod$prevHSpeed;
+
     @Inject(method = "travel", at = @At("TAIL"))
     private void examplemod$tinyAirHorizontalDrag(CallbackInfo ci) {
         LivingEntity entity = (LivingEntity) (Object) this;
-        if (!PixelScaleHelper.isTiny(entity) || entity.onGround() || entity.onClimbable()
+        if (!PixelScaleHelper.isTiny(entity) || entity.onClimbable()
                 || entity.isInWater() || entity.isInLava() || entity.isPassenger()
                 || entity.isFallFlying()) {
             return;
         }
         Vec3 movement = entity.getDeltaMovement();
-        entity.setDeltaMovement(movement.x * com.example.examplemod.scale.TinyMotionTuning.airDrag, movement.y, movement.z * com.example.examplemod.scale.TinyMotionTuning.airDrag);
+        double hSpeed = Math.hypot(movement.x, movement.z);
+        // Normalize the sprint +30% attribute boost so the drag floor stays at walking speed;
+        // sprint-jump landings keep walking pace instead of braking mid-air.
+        double speedAttr = entity.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+        if (entity.isSprinting()) {
+            speedAttr /= 1.3D;
+        }
+        double walkPerTick = speedAttr * 2.15D;
+        if (entity.onGround()) {
+            // Ground launch limiter: while accelerating below walking pace, cap the per-tick
+            // gain so tiny players spool up instead of snapping to full speed. Speeds above
+            // walking pace (knockback, external push) are untouched.
+            double last = this.examplemod$prevHSpeed;
+            if (hSpeed < walkPerTick && hSpeed > last) {
+                double maxDelta = walkPerTick * com.example.examplemod.scale.TinyMotionTuning.groundAccelRatio;
+                if (hSpeed - last > maxDelta) {
+                    double scale = (last + maxDelta) / hSpeed;
+                    entity.setDeltaMovement(movement.x * scale, movement.y, movement.z * scale);
+                    hSpeed = last + maxDelta;
+                }
+            }
+            this.examplemod$prevHSpeed = hSpeed;
+        } else {
+            if (hSpeed > walkPerTick && hSpeed > 1.0e-4D) {
+                double target = walkPerTick + (hSpeed - walkPerTick) * com.example.examplemod.scale.TinyMotionTuning.airDrag;
+                double scale = target / hSpeed;
+                entity.setDeltaMovement(movement.x * scale, movement.y, movement.z * scale);
+            }
+            this.examplemod$prevHSpeed = hSpeed;
+        }
     }
 
     @Inject(
