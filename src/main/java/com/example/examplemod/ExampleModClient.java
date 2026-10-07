@@ -3,6 +3,7 @@ package com.example.examplemod;
 import com.example.examplemod.client.ClientInputEvents;
 import com.example.examplemod.client.DevourClientEvents;
 import com.example.examplemod.client.GiantImpactCamera;
+import com.example.examplemod.client.MaidRideCamera;
 import com.example.examplemod.network.GiantImpactPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -21,6 +22,10 @@ public class ExampleModClient {
         NeoForge.EVENT_BUS.addListener(GiantImpactCamera::onClientTick);
         NeoForge.EVENT_BUS.addListener(GiantImpactCamera::onLoggingOut);
         NeoForge.EVENT_BUS.addListener(GiantImpactCamera::onClone);
+        NeoForge.EVENT_BUS.addListener(MaidRideCamera::onComputeCameraAngles);
+        NeoForge.EVENT_BUS.addListener(MaidRideCamera::onClientTick);
+        NeoForge.EVENT_BUS.addListener(MaidRideCamera::onLoggingOut);
+        NeoForge.EVENT_BUS.addListener(MaidRideCamera::onClone);
         NeoForge.EVENT_BUS.addListener(DevourClientEvents::onMovementInputUpdate);
     }
 }

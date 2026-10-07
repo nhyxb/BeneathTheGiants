@@ -1,5 +1,6 @@
 package com.example.examplemod.mixin;
 
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import net.minecraft.world.entity.boss.EnderDragonPart;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,6 +17,9 @@ public abstract class EnderDragonMixin {
 
     @Unique
     private void examplemod$checkAndRefreshParts() {
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
         EnderDragon dragon = (EnderDragon) (Object) this;
         EnderDragonPart[] parts = dragon.getSubEntities();
         if (parts == null) {
@@ -39,6 +43,9 @@ public abstract class EnderDragonMixin {
 
     @Inject(method = "tickPart", at = @At("HEAD"), cancellable = true)
     private void examplemod$modifyTickPart(EnderDragonPart part, double offsetX, double offsetY, double offsetZ, CallbackInfo ci) {
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
         this.examplemod$checkAndRefreshParts();
         EnderDragon dragon = (EnderDragon) (Object) this;
         float scale = dragon.getScale();

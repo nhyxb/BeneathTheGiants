@@ -66,7 +66,7 @@ public class StompHandler {
             return false;
         }
 
-        // Target must be tiny (Player is always tiny, or mob shrunk by wand)
+        // Target must already be shrunk: an opted-in player, or a mob marked by the wand.
         if (!PixelScaleHelper.isTiny(victim)) {
             return false;
         }

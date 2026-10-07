@@ -1,6 +1,7 @@
 package com.example.examplemod.init;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.example.examplemod.scale.TinyMotionTuning;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -39,8 +40,12 @@ public final class TinyCommands {
                         .then(Commands.argument("ratio", DoubleArgumentType.doubleArg(0.01, 1.0))
                                 .executes(ctx -> setDouble(ctx.getSource(), "groundAccelRatio", TinyMotionTuning.groundAccelRatio = DoubleArgumentType.getDouble(ctx, "ratio")))))
                 .then(Commands.literal("show").executes(ctx -> {
+                    String motionSource = PehkuiScaleSupport.isLoaded()
+                            ? "pehkui-motion-x" + com.example.examplemod.scale.PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER
+                            : "mod-tuning";
                     ctx.getSource().sendSuccess(() -> Component.literal(String.format(
-                            "tiny speedScale=%.2f jumpScale=%.2f gravityScale=%.2f airDrag=%.2f groundAccelRatio=%.2f rainOxygenPerTick=%d",
+                            "tiny motionSource=%s speedScale=%.2f jumpScale=%.2f gravityScale=%.2f airDrag=%.2f groundAccelRatio=%.2f rainOxygenPerTick=%d",
+                            motionSource,
                             TinyMotionTuning.speedScale, TinyMotionTuning.jumpScale, TinyMotionTuning.gravityScale,
                             TinyMotionTuning.airDrag, TinyMotionTuning.groundAccelRatio, TinyMotionTuning.rainOxygenPerTick)), false);
                     return 1;
@@ -57,7 +62,17 @@ public final class TinyCommands {
     }
 
     private static int setDouble(net.minecraft.commands.CommandSourceStack source, String name, double value) {
+        if (PehkuiScaleSupport.isLoaded() && isSizeDerivedMotionSetting(name)) {
+            source.sendSuccess(() -> Component.literal("tiny " + name + " = " + value
+                    + " (Pehkui size-derived motion is active; this tuning is not applied)"), true);
+            return 1;
+        }
         return feedback(source, name, value);
+    }
+
+    private static boolean isSizeDerivedMotionSetting(String name) {
+        return name.equals("speedScale") || name.equals("jumpScale") || name.equals("gravityScale")
+                || name.equals("airDrag") || name.equals("groundAccelRatio");
     }
 
     private static int feedback(net.minecraft.commands.CommandSourceStack source, String name, Object value) {

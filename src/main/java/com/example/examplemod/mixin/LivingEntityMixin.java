@@ -3,6 +3,7 @@ package com.example.examplemod.mixin;
 import com.example.examplemod.init.ModAttributes;
 import com.example.examplemod.init.ModDamageTypes;
 import com.example.examplemod.scale.PixelScaleHelper;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -28,8 +29,13 @@ public abstract class LivingEntityMixin {
 
     @Inject(method = "getScale", at = @At("RETURN"), cancellable = true)
     private void examplemod$modifyScale(CallbackInfoReturnable<Float> cir) {
-        if ((Object) this instanceof Player) {
-            cir.setReturnValue(PixelScaleHelper.PLAYER_TINY_SCALE_FLOAT);
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
+        if ((Object) this instanceof Player player) {
+            if (PixelScaleHelper.isTiny(player)) {
+                cir.setReturnValue(PixelScaleHelper.PLAYER_TINY_SCALE_FLOAT);
+            }
             return;
         }
         LivingEntity entity = (LivingEntity) (Object) this;
@@ -52,7 +58,7 @@ public abstract class LivingEntityMixin {
         if (!PixelScaleHelper.isTiny(entity)) {
             return distance;
         }
-        float scale = entity.getScale();
+        float scale = PixelScaleHelper.getEffectiveScale(entity);
         if (Float.isFinite(scale) && scale > 0.0F && Math.abs(scale - 1.0F) > 1e-5F) {
             return distance / scale;
         }
@@ -69,19 +75,21 @@ public abstract class LivingEntityMixin {
             @Local(argsOnly = true) DamageSource source
     ) {
         if (source.is(ModDamageTypes.AXOLOTL_BITE)) return;
-        Entity attacker = source.getEntity();
-        if (attacker instanceof LivingEntity livingAttacker && PixelScaleHelper.isTiny(livingAttacker)) {
-            strength *= 0.25D;
-        }
-        if (PixelScaleHelper.isTiny(instance)) {
-            strength *= 0.25D;
+        if (!PehkuiScaleSupport.isLoaded()) {
+            Entity attacker = source.getEntity();
+            if (attacker instanceof LivingEntity livingAttacker && PixelScaleHelper.isTiny(livingAttacker)) {
+                strength *= 0.25D;
+            }
+            if (PixelScaleHelper.isTiny(instance)) {
+                strength *= 0.25D;
+            }
         }
         original.call(instance, strength, x, z);
     }
 
     @Inject(method = "getDimensions", at = @At("RETURN"), cancellable = true)
     private void examplemod$modifySleepingDimensions(net.minecraft.world.entity.Pose pose, CallbackInfoReturnable<net.minecraft.world.entity.EntityDimensions> cir) {
-        if (pose == net.minecraft.world.entity.Pose.SLEEPING) {
+        if (!PehkuiScaleSupport.isLoaded() && pose == net.minecraft.world.entity.Pose.SLEEPING) {
             float scale = ((LivingEntity) (Object) this).getScale();
             net.minecraft.world.entity.EntityDimensions original = cir.getReturnValue();
             cir.setReturnValue(new net.minecraft.world.entity.EntityDimensions(
@@ -153,6 +161,9 @@ public abstract class LivingEntityMixin {
 
     @Inject(method = "travel", at = @At("TAIL"))
     private void examplemod$tinyAirHorizontalDrag(CallbackInfo ci) {
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
         LivingEntity entity = (LivingEntity) (Object) this;
         if (!PixelScaleHelper.isTiny(entity) || entity.onClimbable()
                 || entity.isInWater() || entity.isInLava() || entity.isPassenger()
@@ -223,7 +234,7 @@ public abstract class LivingEntityMixin {
                         cir.setReturnValue(new Vec3(current.x, 0.0D, current.z));
                         entity.resetFallDistance();
                     } else if (entity.zza > 0 || this.jumping) {
-                        double climb = PixelScaleHelper.TINY_WALL_CLIMB_SPEED;
+                        double climb = PixelScaleHelper.getWallClimbSpeed();
                         double y = this.jumping
                                 ? Math.max(entity.getAttributeValue(Attributes.JUMP_STRENGTH), climb)
                                 : climb;
@@ -250,9 +261,9 @@ public abstract class LivingEntityMixin {
                 cir.setReturnValue(new Vec3(current.x, gravity, current.z));
                 entity.resetFallDistance();
             } else if (entity.zza > 0 || this.jumping) {
-                double climb = (PixelScaleHelper.TINY_WALL_CLIMB_SPEED / 0.98D) + gravity;
+                double climb = (PixelScaleHelper.getWallClimbSpeed() / 0.98D) + gravity;
                 double y = this.jumping
-                        ? Math.max(entity.getAttributeValue(Attributes.JUMP_STRENGTH), (PixelScaleHelper.TINY_WALL_CLIMB_SPEED / 0.98D)) + gravity
+                        ? Math.max(entity.getAttributeValue(Attributes.JUMP_STRENGTH), (PixelScaleHelper.getWallClimbSpeed() / 0.98D)) + gravity
                         : climb;
                 cir.setReturnValue(new Vec3(current.x, y, current.z));
                 entity.resetFallDistance();

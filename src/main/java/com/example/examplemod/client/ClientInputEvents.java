@@ -3,6 +3,7 @@ package com.example.examplemod.client;
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.devour.DevourRules;
 import com.example.examplemod.init.ModTags;
+import com.example.examplemod.maid.MaidHeadSeat;
 import com.example.examplemod.network.SurvivalPayload;
 import com.example.examplemod.scale.PixelScaleHelper;
 import com.example.examplemod.survival.SurvivalRules;
@@ -48,7 +49,7 @@ public final class ClientInputEvents {
         if (MOUNT_KEY.consumeClick() && minecraft.screen == null && PixelScaleHelper.isTiny(player)) {
             int targetId = -1;
             if (!player.isPassenger() && minecraft.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
-                    && hit.getEntity().getType().is(ModTags.RIDEABLE_LIVESTOCK)) {
+                    && (hit.getEntity().getType().is(ModTags.RIDEABLE_LIVESTOCK) || MaidHeadSeat.isMaid(hit.getEntity()))) {
                 targetId = hit.getEntity().getId();
             }
             PacketDistributor.sendToServer(new SurvivalPayload(

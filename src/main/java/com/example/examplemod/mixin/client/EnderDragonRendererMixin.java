@@ -1,5 +1,6 @@
 package com.example.examplemod.mixin.client;
 
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EnderDragonRenderer;
@@ -17,6 +18,9 @@ public abstract class EnderDragonRendererMixin {
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", ordinal = 0, shift = At.Shift.AFTER)
     )
     private void examplemod$scaleDragonRender(EnderDragon entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
         float scale = entity.getScale();
         if (scale != 1.0F) {
             poseStack.scale(scale, scale, scale);

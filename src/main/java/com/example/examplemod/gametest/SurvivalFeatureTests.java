@@ -70,6 +70,27 @@ public final class SurvivalFeatureTests {
     }
 
     @GameTest(template = "empty")
+    public static void tinyPlayerHidesOnlyOwnWalkParticles(GameTestHelper helper) {
+        Player self = helper.makeMockPlayer(GameType.SURVIVAL);
+        Player other = helper.makeMockPlayer(GameType.SURVIVAL);
+        Cow cow = helper.spawn(EntityType.COW, helper.absoluteVec(new Vec3(2.5, 2.0, 2.5)));
+
+        helper.assertTrue(!SurvivalRules.shouldHideOwnWalkParticles(self, self),
+                "Normal-sized player still sees own walk particles");
+        PixelScaleHelper.ensurePlayerMini(self);
+        helper.assertTrue(SurvivalRules.shouldHideOwnWalkParticles(self, self),
+                "Tiny player hides own walk particles");
+        helper.assertTrue(!SurvivalRules.shouldHideOwnWalkParticles(other, self),
+                "Another normal player stays visible");
+        PixelScaleHelper.ensurePlayerMini(other);
+        helper.assertTrue(!SurvivalRules.shouldHideOwnWalkParticles(other, self),
+                "Another tiny player is not treated as self");
+        helper.assertTrue(!SurvivalRules.shouldHideOwnWalkParticles(cow, self),
+                "Mobs keep their walk particles");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void cobwebVibrationCooldownSurvivesLeavingTheWeb(GameTestHelper helper) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
         SurvivalRules.clearPlayer(player.getUUID());

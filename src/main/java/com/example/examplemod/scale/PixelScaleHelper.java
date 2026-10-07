@@ -25,9 +25,12 @@ public class PixelScaleHelper {
     public static final double PLAYER_TINY_SCALE = 1.0 / 28.8;
     public static final float PLAYER_TINY_SCALE_FLOAT = (float) PLAYER_TINY_SCALE;
 
-    // Match the chosen Pehkui-style motion multiplier, independently of visual size.
+    // Used by the standalone sizing implementation when Pehkui is absent.
     public static final double TINY_MOTION_SCALE = 0.25D;
     public static final double TINY_WALL_CLIMB_SPEED = (0.2D - 0.08D) * 0.98D * TINY_MOTION_SCALE;
+    // Pehkui MOTION already scales displacement. Speed and jump are doubled on top of that.
+    // Gravity uses the same factor so the longer jump still lands in the previous air time.
+    public static final double PEHKUI_LOCOMOTION_MULTIPLIER = 2.0D;
 
     public static final double WAND_SCALE = 0.5D;
     public static final float WAND_SCALE_FLOAT = (float) WAND_SCALE;
@@ -37,6 +40,8 @@ public class PixelScaleHelper {
     public static final float TINY_SCALE_FLOAT = PLAYER_TINY_SCALE_FLOAT;
 
     public static final ResourceLocation TINY_PIXEL_SCALE_ID = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "tiny_pixel_scale");
+    /** Maid hunt shrinks a mob to the player's scale, separate from the wand's half-size mark. */
+    public static final ResourceLocation HUNT_SCALE_ID = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "maid_hunt_scale");
     public static final ResourceLocation TINY_MAX_HEALTH_ID = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "tiny_max_health");
     public static final ResourceLocation TINY_MOVEMENT_SPEED_ID = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "tiny_movement_speed");
     public static final ResourceLocation TINY_JUMP_STRENGTH_ID = ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "tiny_jump_strength");
@@ -58,17 +63,134 @@ public class PixelScaleHelper {
         return entity != null && entity.getAttributes() != null && entity.getAttributes().hasAttribute(attribute);
     }
 
-    public static boolean isTiny(LivingEntity entity) {
-        if (entity == null) {
+    public static boolean isPlayerTinyScale(LivingEntity entity) {
+        if (entity == null || entity instanceof Player || entity.getAttributes() == null) {
+            return entity instanceof Player;
+        }
+        AttributeInstance scale = entity.getAttribute(ModAttributes.PIXEL_SCALE);
+        if (scale == null) {
             return false;
         }
-        if (entity instanceof Player) {
-            return true;
+        AttributeModifier modifier = scale.getModifier(HUNT_SCALE_ID);
+        return modifier != null
+                && modifier.operation() == AttributeModifier.Operation.ADD_VALUE
+                && Math.abs(modifier.amount() - (PLAYER_TINY_SCALE - 1.0D)) <= 1.0e-6D;
+    }
+
+    /** Replace any wand half-scale with the same absolute scale the player uses. */
+    public static void shrinkToPlayerScale(LivingEntity entity) {
+        if (entity == null || entity instanceof Player || entity.getAttributes() == null) {
+            return;
         }
-        if (entity.getAttributes() == null) {
+        AttributeInstance scale = entity.getAttribute(ModAttributes.PIXEL_SCALE);
+        if (scale == null) {
+            return;
+        }
+        scale.removeModifier(TINY_PIXEL_SCALE_ID);
+        scale.addOrReplacePermanentModifier(new AttributeModifier(
+                HUNT_SCALE_ID,
+                PLAYER_TINY_SCALE - 1.0D,
+                AttributeModifier.Operation.ADD_VALUE
+        ));
+        entity.refreshDimensions();
+        PehkuiScaleSupport.ensureHuntScale(entity);
+    }
+
+    public static boolean isTiny(LivingEntity entity) {
+        if (entity == null || entity.getAttributes() == null) {
             return false;
         }
         return entity.getAttributes().hasModifier(ModAttributes.PIXEL_SCALE, TINY_PIXEL_SCALE_ID);
+    }
+
+    /** Repair an already-shrunk player. A normal player is left alone. */
+    public static void maintainPlayerMini(Player player) {
+        if (isTiny(player)) {
+            ensurePlayerMini(player);
+        }
+    }
+
+    public static ToggleResult togglePlayer(Player player) {
+        if (player == null || player.level().isClientSide() || !player.isAlive() || player.isSpectator()) {
+            return ToggleResult.IGNORED_NON_LIVING;
+        }
+        if (isTiny(player)) {
+            if (!canRestoreSafely(player)) {
+                return ToggleResult.RESTORE_BLOCKED;
+            }
+            removeTinyModifiers(player);
+            return ToggleResult.RESTORED;
+        }
+        ensurePlayerMini(player);
+        return ToggleResult.APPLIED_MINI;
+    }
+
+    public static float getEffectiveScale(LivingEntity entity) {
+        return PehkuiScaleSupport.getEffectiveScale(entity);
+    }
+
+    public static double getWallClimbSpeed() {
+        return PehkuiScaleSupport.isLoaded()
+                ? (0.2D - 0.08D) * 0.98D
+                : TINY_WALL_CLIMB_SPEED;
+    }
+
+    private static boolean removeModifierIfPresent(LivingEntity entity, Holder<Attribute> attribute, ResourceLocation id) {
+        if (!hasAttribute(entity, attribute)) {
+            return false;
+        }
+        AttributeInstance instance = entity.getAttribute(attribute);
+        if (instance == null || !instance.hasModifier(id)) {
+            return false;
+        }
+        instance.removeModifier(id);
+        return true;
+    }
+
+    private static boolean ensurePehkuiDoubledLocomotion(LivingEntity entity) {
+        boolean changed = false;
+        // Step stays on Pehkui MOTION. Gravity matches the doubled jump so air time does not stretch.
+        changed |= ensureModifier(entity, Attributes.GRAVITY, TINY_GRAVITY_ID,
+                PEHKUI_LOCOMOTION_MULTIPLIER - 1.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        changed |= removeModifierIfPresent(entity, Attributes.STEP_HEIGHT, TINY_STEP_HEIGHT_ID);
+        changed |= ensureModifier(entity, Attributes.MOVEMENT_SPEED, TINY_MOVEMENT_SPEED_ID,
+                PEHKUI_LOCOMOTION_MULTIPLIER - 1.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        changed |= ensureModifier(entity, Attributes.JUMP_STRENGTH, TINY_JUMP_STRENGTH_ID,
+                PEHKUI_LOCOMOTION_MULTIPLIER - 1.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        return changed;
+    }
+
+    private static boolean removePehkuiDerivedAttributeModifiers(LivingEntity entity) {
+        boolean changed = ensurePehkuiDoubledLocomotion(entity);
+        changed |= removeModifierIfPresent(entity, Attributes.BLOCK_INTERACTION_RANGE, TINY_BLOCK_RANGE_ID);
+        changed |= removeModifierIfPresent(entity, Attributes.ENTITY_INTERACTION_RANGE, TINY_ENTITY_RANGE_ID);
+        return changed;
+    }
+
+    private static boolean ensurePehkuiPlayerHandRange(Player player) {
+        boolean changed = ensurePlayerRangeModifier(player, Attributes.BLOCK_INTERACTION_RANGE, TINY_BLOCK_RANGE_ID);
+        changed |= ensurePlayerRangeModifier(player, Attributes.ENTITY_INTERACTION_RANGE, TINY_ENTITY_RANGE_ID);
+        return changed;
+    }
+
+    private static boolean ensurePlayerRangeModifier(Player player, Holder<Attribute> attribute, ResourceLocation id) {
+        if (!hasAttribute(player, attribute)) {
+            return false;
+        }
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance == null) {
+            return false;
+        }
+        double base = instance.getBaseValue();
+        double target = Math.max(1.5D, base * PLAYER_TINY_SCALE);
+        double amount = target - base;
+        AttributeModifier existing = instance.getModifier(id);
+        if (existing != null && existing.operation() == AttributeModifier.Operation.ADD_VALUE
+                && Math.abs(existing.amount() - amount) <= 1.0e-6D) {
+            return false;
+        }
+        instance.addOrReplacePermanentModifier(new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_VALUE));
+        return true;
     }
 
     public static void applyTinyModifiers(LivingEntity entity) {
@@ -111,41 +233,46 @@ public class PixelScaleHelper {
             }
         }
 
-        // 3. Movement speed (x0.25 -> amount = -0.75)
-        if (hasAttribute(entity, Attributes.MOVEMENT_SPEED)) {
-            AttributeInstance speedInst = entity.getAttribute(Attributes.MOVEMENT_SPEED);
-            if (speedInst != null) {
-                speedInst.addOrReplacePermanentModifier(new AttributeModifier(
-                        TINY_MOVEMENT_SPEED_ID,
-                        -0.75D,
-                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
-                ));
+        if (PehkuiScaleSupport.isLoaded()) {
+            // Pehkui owns motion and step scaling here; keep world-distance fall damage unchanged.
+            removePehkuiDerivedAttributeModifiers(entity);
+        } else {
+            // 3. Movement speed (x0.25 -> amount = -0.75)
+            if (hasAttribute(entity, Attributes.MOVEMENT_SPEED)) {
+                AttributeInstance speedInst = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+                if (speedInst != null) {
+                    speedInst.addOrReplacePermanentModifier(new AttributeModifier(
+                            TINY_MOVEMENT_SPEED_ID,
+                            -0.75D,
+                            AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+                    ));
+                }
             }
-        }
 
-        // 4. Jump strength (x0.5 -> amount = -0.5)
-        if (hasAttribute(entity, Attributes.JUMP_STRENGTH)) {
-            AttributeInstance jumpInst = entity.getAttribute(Attributes.JUMP_STRENGTH);
-            if (jumpInst != null) {
-                jumpInst.addOrReplacePermanentModifier(new AttributeModifier(
-                        TINY_JUMP_STRENGTH_ID,
-                        -0.5D,
-                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
-                ));
+            // 4. Jump strength (x0.5 -> amount = -0.5)
+            if (hasAttribute(entity, Attributes.JUMP_STRENGTH)) {
+                AttributeInstance jumpInst = entity.getAttribute(Attributes.JUMP_STRENGTH);
+                if (jumpInst != null) {
+                    jumpInst.addOrReplacePermanentModifier(new AttributeModifier(
+                            TINY_JUMP_STRENGTH_ID,
+                            -0.5D,
+                            AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+                    ));
+                }
             }
-        }
 
-        // 5. Step height (scaled to target half-scale, minimum 1/16 block)
-        if (hasAttribute(entity, Attributes.STEP_HEIGHT)) {
-            AttributeInstance stepInst = entity.getAttribute(Attributes.STEP_HEIGHT);
-            if (stepInst != null) {
-                double base = stepInst.getBaseValue();
-                double target = Math.max(1.0 / 16.0, base * WAND_SCALE);
-                stepInst.addOrReplacePermanentModifier(new AttributeModifier(
-                        TINY_STEP_HEIGHT_ID,
-                        target - base,
-                        AttributeModifier.Operation.ADD_VALUE
-                ));
+            // 5. Step height (scaled to target half-scale, minimum 1/16 block)
+            if (hasAttribute(entity, Attributes.STEP_HEIGHT)) {
+                AttributeInstance stepInst = entity.getAttribute(Attributes.STEP_HEIGHT);
+                if (stepInst != null) {
+                    double base = stepInst.getBaseValue();
+                    double target = Math.max(1.0 / 16.0, base * WAND_SCALE);
+                    stepInst.addOrReplacePermanentModifier(new AttributeModifier(
+                            TINY_STEP_HEIGHT_ID,
+                            target - base,
+                            AttributeModifier.Operation.ADD_VALUE
+                    ));
+                }
             }
         }
 
@@ -158,11 +285,20 @@ public class PixelScaleHelper {
                 }
             }
         }
+
+        PehkuiScaleSupport.ensureWandScale(entity);
     }
 
     public static void removeTinyModifiers(LivingEntity entity) {
         if (entity == null || entity.getAttributes() == null) {
             return;
+        }
+
+        if (entity instanceof Player player) {
+            PehkuiScaleSupport.clearPlayerScale(player);
+        } else {
+            PehkuiScaleSupport.removeWandScale(entity);
+            PehkuiScaleSupport.restoreSizeDerivedScaling(entity);
         }
 
         // 1. Pixel scale
@@ -252,6 +388,12 @@ public class PixelScaleHelper {
             return;
         }
         if (player.level().isClientSide) {
+            if (PehkuiScaleSupport.isLoaded()) {
+                PehkuiScaleSupport.ensurePlayerScale(player);
+                ensurePehkuiDoubledLocomotion(player);
+                ensurePehkuiPlayerHandRange(player);
+                return;
+            }
             if (Math.abs(player.getScale() - PLAYER_TINY_SCALE_FLOAT) > 1e-4 || player.getBbHeight() > 0.1F) {
                 player.refreshDimensions();
             }
@@ -263,6 +405,13 @@ public class PixelScaleHelper {
         }
 
         boolean changed = false;
+        boolean pehkuiScaling = PehkuiScaleSupport.isLoaded();
+
+        changed |= PehkuiScaleSupport.ensurePlayerScale(player);
+        if (pehkuiScaling) {
+            changed |= ensurePehkuiDoubledLocomotion(player);
+            changed |= ensurePehkuiPlayerHandRange(player);
+        }
 
         // 1. Pixel scale modifier
         if (hasAttribute(player, ModAttributes.PIXEL_SCALE)) {
@@ -298,7 +447,7 @@ public class PixelScaleHelper {
         }
 
         // 3. Movement speed (tunable via /tiny speed; default x0.25, migrates legacy -0.65)
-        if (hasAttribute(player, Attributes.MOVEMENT_SPEED)) {
+        if (!pehkuiScaling && hasAttribute(player, Attributes.MOVEMENT_SPEED)) {
             AttributeInstance speedInst = player.getAttribute(Attributes.MOVEMENT_SPEED);
             if (speedInst != null) {
                 AttributeModifier existing = speedInst.getModifier(TINY_MOVEMENT_SPEED_ID);
@@ -314,7 +463,7 @@ public class PixelScaleHelper {
         }
 
         // 4. Jump strength (tunable via /tiny jump; default x0.25, aligned with movement per Pehkui scaledMotion)
-        if (hasAttribute(player, Attributes.JUMP_STRENGTH)) {
+        if (!pehkuiScaling && hasAttribute(player, Attributes.JUMP_STRENGTH)) {
             AttributeInstance jumpInst = player.getAttribute(Attributes.JUMP_STRENGTH);
             if (jumpInst != null) {
                 AttributeModifier existing = jumpInst.getModifier(TINY_JUMP_STRENGTH_ID);
@@ -331,7 +480,7 @@ public class PixelScaleHelper {
         }
 
         // 5. Step height
-        if (hasAttribute(player, Attributes.STEP_HEIGHT)) {
+        if (!pehkuiScaling && hasAttribute(player, Attributes.STEP_HEIGHT)) {
             AttributeInstance stepInst = player.getAttribute(Attributes.STEP_HEIGHT);
             if (stepInst != null && !stepInst.hasModifier(TINY_STEP_HEIGHT_ID)) {
                 double base = stepInst.getBaseValue();
@@ -346,7 +495,7 @@ public class PixelScaleHelper {
         }
 
         // 5.5. Gravity (tunable via /tiny gravity; default x0.25, aligned with movement per Pehkui scaledMotion)
-        if (hasAttribute(player, Attributes.GRAVITY)) {
+        if (!pehkuiScaling && hasAttribute(player, Attributes.GRAVITY)) {
             AttributeInstance gravityInst = player.getAttribute(Attributes.GRAVITY);
             if (gravityInst != null) {
                 AttributeModifier existing = gravityInst.getModifier(TINY_GRAVITY_ID);
@@ -423,10 +572,16 @@ public class PixelScaleHelper {
             changed = true;
         }
 
-        changed |= ensureModifier(entity, Attributes.MOVEMENT_SPEED, TINY_MOVEMENT_SPEED_ID,
-                -0.75D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-        changed |= ensureModifier(entity, Attributes.JUMP_STRENGTH, TINY_JUMP_STRENGTH_ID,
-                -0.5D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        boolean pehkuiScaling = PehkuiScaleSupport.isLoaded();
+        changed |= PehkuiScaleSupport.ensureWandScale(entity);
+        if (pehkuiScaling) {
+            changed |= removePehkuiDerivedAttributeModifiers(entity);
+        } else {
+            changed |= ensureModifier(entity, Attributes.MOVEMENT_SPEED, TINY_MOVEMENT_SPEED_ID,
+                    -0.75D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+            changed |= ensureModifier(entity, Attributes.JUMP_STRENGTH, TINY_JUMP_STRENGTH_ID,
+                    -0.5D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        }
 
         // Repair saved partial states without applying the initial health ratio again.
         float oldHealth = entity.getHealth();
@@ -437,7 +592,7 @@ public class PixelScaleHelper {
         }
         changed |= healthChanged;
 
-        if (hasAttribute(entity, Attributes.STEP_HEIGHT)) {
+        if (!pehkuiScaling && hasAttribute(entity, Attributes.STEP_HEIGHT)) {
             AttributeInstance stepInst = entity.getAttribute(Attributes.STEP_HEIGHT);
             if (stepInst != null) {
                 double base = stepInst.getBaseValue();
@@ -512,17 +667,29 @@ public class PixelScaleHelper {
 
     public static boolean canRestoreSafely(LivingEntity entity) {
         Level level = entity.level();
-        Pose pose = entity.getPose();
-        double vanillaScale = hasAttribute(entity, Attributes.SCALE) ? entity.getAttributeValue(Attributes.SCALE) : 1.0D;
-        double restoredPixelScale = calculateRestoredPixelScale(entity);
-        float totalScale = (float) (vanillaScale * restoredPixelScale);
-
-        EntityDimensions defaultDims = ((LivingEntityAccessor) entity).examplemod$callGetDefaultDimensions(pose);
-        EntityDimensions restoredDims = defaultDims.scale(totalScale);
+        boolean restoringPlayer = entity instanceof Player;
+        Pose pose = restoringPlayer ? Pose.STANDING : entity.getPose();
+        EntityDimensions restoredDims;
+        if (restoringPlayer) {
+            double vanillaScale = hasAttribute(entity, Attributes.SCALE) ? entity.getAttributeValue(Attributes.SCALE) : 1.0D;
+            EntityDimensions defaultDims = ((LivingEntityAccessor) entity).examplemod$callGetDefaultDimensions(pose);
+            restoredDims = defaultDims.scale((float) vanillaScale);
+        } else if (PehkuiScaleSupport.isLoaded()) {
+            // The Pehkui BASE modifier applied by this mod is a 0.5 multiplier.
+            restoredDims = entity.getDimensions(pose).scale(1.0F / WAND_SCALE_FLOAT);
+        } else {
+            double vanillaScale = hasAttribute(entity, Attributes.SCALE) ? entity.getAttributeValue(Attributes.SCALE) : 1.0D;
+            double restoredPixelScale = calculateRestoredPixelScale(entity);
+            float totalScale = (float) (vanillaScale * restoredPixelScale);
+            EntityDimensions defaultDims = ((LivingEntityAccessor) entity).examplemod$callGetDefaultDimensions(pose);
+            restoredDims = defaultDims.scale(totalScale);
+        }
         AABB restoredAabb = restoredDims.makeBoundingBox(entity.position());
 
         // Check world block collisions
-        if (!level.noBlockCollision(entity, restoredAabb)) {
+        // A tiny player phases through leaves and fences. The restored body must be tested
+        // without that exemption, or a full-size player is released inside those blocks.
+        if (!level.noBlockCollision(restoringPlayer ? null : entity, restoredAabb)) {
             return false;
         }
 

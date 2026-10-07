@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
@@ -152,6 +153,13 @@ public final class DevourRules {
                     SoundEvents.GENERIC_EAT, SoundSource.HOSTILE, 0.7F, 0.9F);
         }
         if (now - session.startedAt >= session.duration) finish(player, session);
+    }
+
+    public static void finishDevour(Mob captor, LivingEntity victim) {
+        if (captor == null || victim == null || victim.level().isClientSide()) {
+            return;
+        }
+        victim.hurt(new DevourFinishDamageSource(victim.level(), captor), Float.MAX_VALUE);
     }
 
     private static void finish(Player player, Session session) {

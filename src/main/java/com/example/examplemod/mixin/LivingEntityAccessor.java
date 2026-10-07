@@ -17,4 +17,7 @@ public interface LivingEntityAccessor {
 
     @Accessor("lastHurt")
     void examplemod$setLastHurt(float value);
+
+    @Accessor("jumping")
+    boolean examplemod$isJumping();
 }

@@ -3,6 +3,7 @@ package com.example.examplemod.survival;
 import com.example.examplemod.config.SurvivalConfig;
 import com.example.examplemod.devour.DevourRules;
 import com.example.examplemod.init.ModTags;
+import com.example.examplemod.maid.MaidHeadSeat;
 import com.example.examplemod.network.SurvivalPayload;
 import com.example.examplemod.scale.PixelScaleHelper;
 import net.minecraft.core.BlockPos;
@@ -83,6 +84,13 @@ public final class SurvivalRules {
         return source instanceof Player player && PixelScaleHelper.isTiny(player);
     }
 
+    /**
+     * 微型玩家自己的疾跑扬尘不画给自己看。观察者不是移动者时仍保留，生物也不藏。
+     */
+    public static boolean shouldHideOwnWalkParticles(Entity mover, Player viewer) {
+        return mover == viewer && mover instanceof Player player && PixelScaleHelper.isTiny(player);
+    }
+
     public static boolean shouldIgnoreTriggerEntity(Entity entity) {
         return entity instanceof Player player && PixelScaleHelper.isTiny(player);
     }
@@ -121,6 +129,7 @@ public final class SurvivalRules {
 
     public static void tickPlayer(ServerPlayer player) {
         if (DevourRules.isCaptured(player)) return;
+        MaidHeadSeat.tickRider(player);
         updateSlimeSlowdown(player);
         tickRain(player);
         tickCobweb(player);
@@ -138,7 +147,7 @@ public final class SurvivalRules {
     private static void toggleMount(ServerPlayer player, int targetEntityId) {
         if (player.isPassenger()) {
             Entity vehicle = player.getVehicle();
-            if (vehicle != null && vehicle.getType().is(ModTags.RIDEABLE_LIVESTOCK)) {
+            if (vehicle != null && (vehicle.getType().is(ModTags.RIDEABLE_LIVESTOCK) || MaidHeadSeat.isMaid(vehicle))) {
                 player.stopRiding();
             }
             return;
@@ -151,10 +160,12 @@ public final class SurvivalRules {
     }
 
     public static boolean isValidMountTarget(Player player, Entity target) {
-        if (DevourRules.isCaptured(player) || target == null || !target.getType().is(ModTags.RIDEABLE_LIVESTOCK)
-                || target == player || !target.isAlive()
+        if (DevourRules.isCaptured(player) || target == null || target == player || !target.isAlive()
                 || player.distanceToSqr(target) > 4.5D * 4.5D
                 || !player.hasLineOfSight(target)) {
+            return false;
+        }
+        if (!target.getType().is(ModTags.RIDEABLE_LIVESTOCK) && !MaidHeadSeat.canSitOn(player, target)) {
             return false;
         }
         Vec3 start = player.getEyePosition();

@@ -5,6 +5,7 @@ import com.example.examplemod.init.ModItems;
 import com.example.examplemod.network.GiantImpactPayload;
 import com.example.examplemod.network.SurvivalPayload;
 import com.example.examplemod.config.SurvivalConfig;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -30,6 +31,8 @@ public class ExampleMod {
             .icon(() -> ModItems.SCALE_WAND.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 output.accept(ModItems.SCALE_WAND.get());
+                output.accept(ModItems.MAID_HEAD_SEAT.get());
+                output.accept(ModItems.MAID_TINY_HUNT.get());
             }).build());
 
     public ExampleMod(IEventBus modEventBus, ModContainer modContainer) {
@@ -41,5 +44,7 @@ public class ExampleMod {
         modEventBus.addListener(ModAttributes::onEntityAttributeModification);
         modEventBus.addListener(SurvivalPayload::register);
         modEventBus.addListener(GiantImpactPayload::register);
+
+        PehkuiScaleSupport.initializeIfAvailable();
     }
 }

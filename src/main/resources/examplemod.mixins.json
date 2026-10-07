@@ -19,6 +19,9 @@
     "EnderDragonPartMixin",
     "DevourPlayerMixin",
     "DevourRidingMixin",
+    "MaidHeadSeatMixin",
+    "MaidHeadSeatControlMixin",
+    "MaidHeadSeatAiMixin",
     "AxolotlVortexMixin",
     "SelectiveBlockCollisionMixin",
     "SelectiveSuffocationMixin"
@@ -28,8 +31,10 @@
     "client.AbstractClientPlayerMixin",
     "client.CameraMixin",
     "client.GameRendererMixin",
+    "client.MaidRidePickMixin",
     "client.DevourRendererMixin",
-    "client.AxolotlVortexModelMixin"
+    "client.AxolotlVortexModelMixin",
+    "client.EntityWalkParticleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

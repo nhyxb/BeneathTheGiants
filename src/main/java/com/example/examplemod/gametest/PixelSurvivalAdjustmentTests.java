@@ -2,6 +2,7 @@ package com.example.examplemod.gametest;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.init.ModAttributes;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.example.examplemod.scale.PixelScaleHelper;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTest;
@@ -42,6 +43,7 @@ public class PixelSurvivalAdjustmentTests {
         animateDisplacement(marked, 0.01);
         close(helper, marked.walkAnimation.speed(), 0.032, "Marked half cow animation");
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        PixelScaleHelper.ensurePlayerMini(player);
         animateDisplacement(player, 0.01);
         close(helper, player.walkAnimation.speed(), 0.4, "Micro player animation saturates to .4 after update");
         for (LivingEntity entity : new LivingEntity[]{marked, player}) {
@@ -128,10 +130,12 @@ public class PixelSurvivalAdjustmentTests {
         close(helper, cow.getScale(), 0.5, "Repaired scale");
         close(helper, cow.getMaxHealth(), 5, "Missing health modifier repaired");
         close(helper, cow.getHealth(), expectedHealth, "Repair must preserve absolute HP or clamp only excess");
+        double speedFactor = PehkuiScaleSupport.isLoaded() ? PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER : .25;
+        double jumpFactor = PehkuiScaleSupport.isLoaded() ? PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER : .5;
         close(helper, cow.getAttributeValue(Attributes.MOVEMENT_SPEED),
-                cow.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue() * .25, "Missing speed modifier repaired");
+                cow.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue() * speedFactor, "Missing speed modifier repaired");
         close(helper, cow.getAttributeValue(Attributes.JUMP_STRENGTH),
-                cow.getAttribute(Attributes.JUMP_STRENGTH).getBaseValue() * .5, "Missing jump modifier repaired");
+                cow.getAttribute(Attributes.JUMP_STRENGTH).getBaseValue() * jumpFactor, "Missing jump modifier repaired");
         close(helper, cow.getAttributeValue(Attributes.STEP_HEIGHT),
                 Math.max(1.0 / 16, cow.getAttribute(Attributes.STEP_HEIGHT).getBaseValue() * .5), "Missing step modifier repaired");
     }
@@ -141,8 +145,9 @@ public class PixelSurvivalAdjustmentTests {
         close(helper, cow.getBbHeight(), .7, "Legacy AABB must refresh on join");
         close(helper, cow.getHealth(), 3.5, "Migration must preserve absolute HP");
         close(helper, cow.getMaxHealth(), 7, "External health modifier must retain its effect");
+        double speedFactor = PehkuiScaleSupport.isLoaded() ? PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER : .25;
         close(helper, cow.getAttributeValue(Attributes.MOVEMENT_SPEED),
-                (cow.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue() + .1) * .25, "Migrated speed including external addition");
+                (cow.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue() + .1) * speedFactor, "Migrated speed including external addition");
         close(helper, cow.getAttributeValue(Attributes.STEP_HEIGHT), Math.max(1.0 / 16, baseStep * .5) + .1,
                 "Migrated step including external addition");
         helper.assertTrue(cow.getAttribute(Attributes.MOVEMENT_SPEED).hasModifier(EXTERNAL_SPEED), "External speed ID retained");

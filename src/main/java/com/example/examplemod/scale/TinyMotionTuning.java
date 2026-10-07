@@ -1,8 +1,9 @@
 package com.example.examplemod.scale;
 
 /**
- * Live-tunable tiny player motion parameters, adjusted at runtime via /tiny commands
- * (permission level 2). Values are not persisted; defaults return on restart.
+ * Live-tunable standalone tiny player motion parameters, adjusted at runtime via /tiny commands
+ * (permission level 2). Pehkui mode uses its own size-derived motion; these values apply without Pehkui.
+ * Values are not persisted; defaults return on restart.
  */
 public final class TinyMotionTuning {
     public static double speedScale = 0.25D;

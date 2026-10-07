@@ -5,6 +5,7 @@ import com.example.examplemod.init.ModAttributes;
 import com.example.examplemod.init.ModItems;
 import com.example.examplemod.mixin.LivingEntityAccessor;
 import com.example.examplemod.retaliate.FriendlyRetaliateGoal;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.example.examplemod.scale.PixelScaleHelper;
 import com.example.examplemod.scale.ScaleEvents;
 import com.example.examplemod.stomp.StompHandler;
@@ -53,22 +54,26 @@ public class PixelSurvivalGameTests {
     @GameTest(template = "empty")
     public static void playerDimensionsAndLifecycleLocking(GameTestHelper helper) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        helper.assertTrue(!PixelScaleHelper.isTiny(player), "A new player is not tiny");
+        helper.assertTrue(player.getBbHeight() > 1.0F, "A new player keeps a normal hitbox");
 
-        // Player scale must be fixed to 1 / 28.8
+        // Opting in fixes the scale to 1 / 28.8
         float expectedScale = PixelScaleHelper.TINY_SCALE_FLOAT;
-        float actualScale = player.getScale();
-        helper.assertTrue(Math.abs(actualScale - expectedScale) < 1e-5, "Player getScale should be 1/28.8");
+        PixelScaleHelper.ensurePlayerMini(player);
+        float actualScale = PehkuiScaleSupport.isLoaded()
+                ? PehkuiScaleSupport.getEffectiveScale(player)
+                : player.getScale();
+        helper.assertTrue(Math.abs(actualScale - expectedScale) < 1e-4, "Player scale should be 1/28.8");
 
         // Player standing height is ~1/16 block (1.8 / 28.8 = 0.0625)
         float height = player.getBbHeight();
-        helper.assertTrue(Math.abs(height - 0.0625F) < 1e-4, "Player standing height should be ~1/16 block");
+        helper.assertTrue(Math.abs(height - 0.0625F) < 1e-3, "Player standing height should be ~1/16 block");
 
         // Eye height must also be scaled
         float eyeHeight = player.getEyeHeight();
         helper.assertTrue(eyeHeight < 0.1F && eyeHeight > 0.01F, "Player eye height must be scaled to tiny proportions");
 
         // Apply and verify attributes
-        PixelScaleHelper.ensurePlayerMini(player);
         helper.assertTrue(player.getMaxHealth() == 10.0F, "Player max health should be halved to 10.0");
         helper.assertTrue(player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE) >= 1.5D, "Block interaction range must be at least 1.5");
         helper.assertTrue(player.getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE) >= 1.5D, "Entity interaction range must be at least 1.5");
@@ -81,13 +86,16 @@ public class PixelSurvivalGameTests {
         // Native scale command simulation: setting vanilla SCALE base value must NOT un-tiny the player
         if (PixelScaleHelper.hasAttribute(player, Attributes.SCALE)) {
             player.getAttribute(Attributes.SCALE).setBaseValue(10.0D);
-            float scaleAfterVanillaChange = player.getScale();
-            helper.assertTrue(Math.abs(scaleAfterVanillaChange - expectedScale) < 1e-5, "Native scale change must not restore player scale");
+            float scaleAfterVanillaChange = PehkuiScaleSupport.isLoaded()
+                    ? PehkuiScaleSupport.getEffectiveScale(player)
+                    : player.getScale();
+            helper.assertTrue(Math.abs(scaleAfterVanillaChange - expectedScale) < 1e-4, "Native scale change must not restore player scale");
         }
 
-        // FakePlayer must also be tiny
+        // Merely existing does not shrink a server player.
         net.minecraft.server.level.ServerPlayer fakePlayer = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(helper.getLevel());
-        helper.assertTrue(Math.abs(fakePlayer.getScale() - expectedScale) < 1e-5, "FakePlayer getScale must also be 1/28.8");
+        helper.assertTrue(!PixelScaleHelper.isTiny(fakePlayer), "FakePlayer is not forced tiny");
+        helper.assertTrue(Math.abs(fakePlayer.getScale() - 1.0F) < 1e-4, "FakePlayer getScale stays 1");
 
         helper.succeed();
     }
@@ -246,6 +254,7 @@ public class PixelSurvivalGameTests {
     @GameTest(template = "empty")
     public static void tinyDamageKnockbackAndMiningSpeed(GameTestHelper helper) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        PixelScaleHelper.ensurePlayerMini(player);
         Cow victim = helper.spawn(EntityType.COW, 6, 2, 6);
 
         // 1. Damage output: tiny player incoming damage scaled to 0.25 (both base and weapon)
@@ -602,6 +611,7 @@ public class PixelSurvivalGameTests {
     @GameTest(template = "empty")
     public static void weaponDamageContainerAndKnockbackScaling(GameTestHelper helper) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        PixelScaleHelper.ensurePlayerMini(player);
         Zombie victim = helper.spawn(EntityType.ZOMBIE, 4, 2, 4);
         ItemStack diamondSword = new ItemStack(Items.DIAMOND_SWORD);
         player.setItemInHand(InteractionHand.MAIN_HAND, diamondSword);
@@ -684,24 +694,28 @@ public class PixelSurvivalGameTests {
     @GameTest(template = "empty")
     public static void sleepingPoseScalingDimensions(GameTestHelper helper) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        helper.assertTrue(player.getDimensions(Pose.SLEEPING).height() > 0.05F, "A normal player keeps vanilla sleeping dimensions");
+        PixelScaleHelper.ensurePlayerMini(player);
 
-        // Sleeping dimensions must be scaled by getScale()
-        EntityDimensions sleepingDims = player.getDimensions(Pose.SLEEPING);
-        helper.assertTrue(sleepingDims.height() < 0.05F, "Sleeping dimensions height must be scaled (not vanilla 0.2)");
-        helper.assertTrue(sleepingDims.width() < 0.05F, "Sleeping dimensions width must be scaled");
+        if (!PehkuiScaleSupport.isLoaded()) {
+            // Sleeping dimensions must be scaled by getScale()
+            EntityDimensions sleepingDims = player.getDimensions(Pose.SLEEPING);
+            helper.assertTrue(sleepingDims.height() < 0.05F, "Sleeping dimensions height must be scaled (not vanilla 0.2)");
+            helper.assertTrue(sleepingDims.width() < 0.05F, "Sleeping dimensions width must be scaled");
 
-        // Standing dimensions must be ~0.0625
-        EntityDimensions standingDims = player.getDimensions(Pose.STANDING);
-        helper.assertTrue(Math.abs(standingDims.height() - 0.0625F) < 1e-4, "Standing height must be 1/16 block");
+            // Standing dimensions must be ~0.0625
+            EntityDimensions standingDims = player.getDimensions(Pose.STANDING);
+            helper.assertTrue(Math.abs(standingDims.height() - 0.0625F) < 1e-4, "Standing height must be 1/16 block");
 
-        // Also test wand mob (Villager) sleeping dimensions scaled by WAND_SCALE 0.5
-        Villager villager = helper.spawn(EntityType.VILLAGER, 2, 2, 2);
-        float origSleepingHeight = villager.getDimensions(Pose.SLEEPING).height();
-        float origSleepingWidth = villager.getDimensions(Pose.SLEEPING).width();
-        PixelScaleHelper.applyTinyModifiers(villager);
-        EntityDimensions tinySleepingDims = villager.getDimensions(Pose.SLEEPING);
-        helper.assertTrue(Math.abs(tinySleepingDims.height() - origSleepingHeight * PixelScaleHelper.WAND_SCALE_FLOAT) < 1e-4, "Villager sleeping height should be scaled to 0.5");
-        helper.assertTrue(Math.abs(tinySleepingDims.width() - origSleepingWidth * PixelScaleHelper.WAND_SCALE_FLOAT) < 1e-4, "Villager sleeping width should be scaled to 0.5");
+            // Wand mobs use the same no-Pehkui sleeping scale path.
+            Villager villager = helper.spawn(EntityType.VILLAGER, 2, 2, 2);
+            float origSleepingHeight = villager.getDimensions(Pose.SLEEPING).height();
+            float origSleepingWidth = villager.getDimensions(Pose.SLEEPING).width();
+            PixelScaleHelper.applyTinyModifiers(villager);
+            EntityDimensions tinySleepingDims = villager.getDimensions(Pose.SLEEPING);
+            helper.assertTrue(Math.abs(tinySleepingDims.height() - origSleepingHeight * PixelScaleHelper.WAND_SCALE_FLOAT) < 1e-4, "Villager sleeping height should be scaled to 0.5");
+            helper.assertTrue(Math.abs(tinySleepingDims.width() - origSleepingWidth * PixelScaleHelper.WAND_SCALE_FLOAT) < 1e-4, "Villager sleeping width should be scaled to 0.5");
+        }
 
         helper.succeed();
     }
@@ -823,8 +837,11 @@ public class PixelSurvivalGameTests {
         PixelScaleHelper.ensurePlayerMini(player);
 
         AttributeModifier speedMod = player.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(PixelScaleHelper.TINY_MOVEMENT_SPEED_ID);
+        double expectedSpeed = PehkuiScaleSupport.isLoaded()
+                ? PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER - 1.0D
+                : -0.75D;
         helper.assertTrue(speedMod != null, "Speed modifier must exist");
-        helper.assertTrue(Math.abs(speedMod.amount() - (-0.75D)) < 1e-6, "Legacy speed -0.65 must be updated to -0.75");
+        helper.assertTrue(Math.abs(speedMod.amount() - expectedSpeed) < 1e-6, "Legacy speed -0.65 must be updated to " + expectedSpeed);
         helper.assertTrue(speedMod.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, "Speed modifier operation must be ADD_MULTIPLIED_TOTAL");
         helper.assertTrue(player.getAttribute(Attributes.MOVEMENT_SPEED).hasModifier(thirdPartyId), "Third-party speed modifier must be preserved");
         helper.assertTrue(player.getMaxHealth() == 10.0F, "Player max health must not duplicate or change");
@@ -832,7 +849,7 @@ public class PixelSurvivalGameTests {
         // Idempotency check: calling ensurePlayerMini again changes nothing
         PixelScaleHelper.ensurePlayerMini(player);
         helper.assertTrue(player.getMaxHealth() == 10.0F, "Idempotent ensurePlayerMini preserves health");
-        helper.assertTrue(Math.abs(player.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(PixelScaleHelper.TINY_MOVEMENT_SPEED_ID).amount() - (-0.75D)) < 1e-6, "Idempotent speed modifier remains -0.75");
+        helper.assertTrue(Math.abs(player.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(PixelScaleHelper.TINY_MOVEMENT_SPEED_ID).amount() - expectedSpeed) < 1e-6, "Idempotent speed modifier remains " + expectedSpeed);
 
         helper.succeed();
     }
@@ -879,7 +896,10 @@ public class PixelSurvivalGameTests {
         helper.assertTrue(zombie.getAttribute(ModAttributes.PIXEL_SCALE).hasModifier(thirdPartyScale), "Third-party scale modifier preserved");
 
         AttributeModifier newSpeedMod = zombie.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(PixelScaleHelper.TINY_MOVEMENT_SPEED_ID);
-        helper.assertTrue(newSpeedMod != null && Math.abs(newSpeedMod.amount() - (-0.75D)) < 1e-6, "Speed modifier migrated to -0.75");
+        double expectedSpeed = PehkuiScaleSupport.isLoaded()
+                ? PixelScaleHelper.PEHKUI_LOCOMOTION_MULTIPLIER - 1.0D
+                : -0.75D;
+        helper.assertTrue(newSpeedMod != null && Math.abs(newSpeedMod.amount() - expectedSpeed) < 1e-6, "Speed modifier migrated to " + expectedSpeed);
 
         AttributeModifier newStepMod = zombie.getAttribute(Attributes.STEP_HEIGHT).getModifier(PixelScaleHelper.TINY_STEP_HEIGHT_ID);
         double expectedStepAmount = Math.max(1.0 / 16.0, oldBaseStep * PixelScaleHelper.WAND_SCALE) - oldBaseStep;

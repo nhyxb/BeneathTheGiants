@@ -27,7 +27,15 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    maven {
+        url = 'https://jitpack.io'
+    }
+    maven {
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
 }
 
 base {
@@ -116,6 +124,14 @@ configurations {
 }
 
 dependencies {
+    // Pehkui is an optional integration. Compile against its public API and load it only in dev runs.
+    compileOnly "com.github.Virtuoel:Pehkui:${pehkui_version}"
+    localRuntime "com.github.Virtuoel:Pehkui:${pehkui_version}"
+
+    // Optional Touhou Little Maid integration. The production jar is not embedded.
+    compileOnly "curse.maven:touhou-little-maid-355044:${tlm_curse_file}"
+    localRuntime "curse.maven:touhou-little-maid-355044:${tlm_curse_file}"
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

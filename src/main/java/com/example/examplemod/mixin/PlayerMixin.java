@@ -1,6 +1,7 @@
 package com.example.examplemod.mixin;
 
 import com.example.examplemod.scale.PixelScaleHelper;
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -25,7 +26,7 @@ public abstract class PlayerMixin {
             index = 0
     )
     private double examplemod$modifyPlayerKnockback(double strength) {
-        if (PixelScaleHelper.isTiny((Player) (Object) this)) {
+        if (!PehkuiScaleSupport.isLoaded() && PixelScaleHelper.isTiny((Player) (Object) this)) {
             return strength * 0.25D;
         }
         return strength;

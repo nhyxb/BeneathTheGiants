@@ -1,5 +1,6 @@
 package com.example.examplemod.mixin;
 
+import com.example.examplemod.scale.PehkuiScaleSupport;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.boss.EnderDragonPart;
@@ -16,6 +17,9 @@ public abstract class EnderDragonPartMixin {
 
     @Inject(method = "getDimensions", at = @At("RETURN"), cancellable = true)
     private void examplemod$modifyPartDimensions(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
+        if (PehkuiScaleSupport.isLoaded()) {
+            return;
+        }
         net.minecraft.world.entity.boss.enderdragon.EnderDragon parent = this.parentMob;
         if (parent == null) {
             parent = ((EnderDragonPart) (Object) this).getParent();

@@ -50,7 +50,7 @@ public class ScaleEvents {
             return;
         }
         if (event.getEntity() instanceof Player player) {
-            PixelScaleHelper.ensurePlayerMini(player);
+            PixelScaleHelper.maintainPlayerMini(player);
         } else if (event.getEntity() instanceof LivingEntity living) {
             PixelScaleHelper.migrateLivingEntity(living);
             if (living instanceof Mob mob && !(mob instanceof Enemy)) {
@@ -147,28 +147,33 @@ public class ScaleEvents {
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        PixelScaleHelper.ensurePlayerMini(event.getEntity());
+        PixelScaleHelper.maintainPlayerMini(event.getEntity());
     }
 
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        PixelScaleHelper.ensurePlayerMini(event.getEntity());
+        PixelScaleHelper.maintainPlayerMini(event.getEntity());
     }
 
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
-        PixelScaleHelper.ensurePlayerMini(event.getEntity());
+        if (PixelScaleHelper.isTiny(event.getOriginal()) || PixelScaleHelper.isTiny(event.getEntity())) {
+            PixelScaleHelper.ensurePlayerMini(event.getEntity());
+        }
     }
 
     @SubscribeEvent
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        PixelScaleHelper.ensurePlayerMini(event.getEntity());
+        PixelScaleHelper.maintainPlayerMini(event.getEntity());
     }
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            PixelScaleHelper.ensurePlayerMini(player);
+            PixelScaleHelper.maintainPlayerMini(player);
+        } else if (event.getEntity().level().isClientSide() && PehkuiScaleSupport.isLoaded()) {
+            // Pehkui reach scale data is also consumed locally by the client raycast.
+            PixelScaleHelper.maintainPlayerMini(event.getEntity());
         }
     }
 
